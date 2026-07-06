@@ -34,11 +34,13 @@ def main():
     full_prompt = prompt + style_suffix
     print(f"Full Prompt: '{full_prompt}'")
     
-    print(f"Loading SDXL Turbo model from local snapshot: {SDXL_SNAPSHOT}")
-    # Load directly from local snapshot directory — no network calls needed
+    # Use local path if it exists, otherwise fall back to Hugging Face Hub (which will download it automatically)
+    model_id = SDXL_SNAPSHOT if os.path.exists(SDXL_SNAPSHOT) else "stabilityai/sdxl-turbo"
+    print(f"Loading SDXL Turbo model from: {model_id}")
+    
     # Do NOT pass variant here; we load fp16 safetensors by specifying torch_dtype only
     pipe = StableDiffusionXLPipeline.from_pretrained(
-        SDXL_SNAPSHOT,
+        model_id,
         torch_dtype=torch.float16 if device == "cuda" else torch.float32,
         use_safetensors=True,
         variant="fp16" if device == "cuda" else None
