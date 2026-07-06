@@ -1,0 +1,42 @@
+# Virtual Environments
+**/venv/
+**/.venv/
+**/env/
+
+# Dependency Directories
+**/node_modules/
+**/bower_components/
+
+# Python Cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+
+# System and IDE Logs / Configs
+**/*.log
+**/.vscode/
+**/.idea/
+**/.DS_Store
+Thumbs.db
+
+# Generated Assets (Video/Audio/Images)
+**/backend/static/video_*.mp4
+**/backend/static/audio_*.wav
+**/backend/static/scene_*.png
+**/backend/static/scene_*.mp4
+**/backend/static/music_*.wav
+**/backend/static/mixed_*.wav
+**/backend/static/temp_*.mp4
+
+# Test and Debug Outputs
+**/backend/static/test_chatterbox_*.wav
+**/backend/static/test_music_*.wav
+**/backend/static/test_sdxl_*.png
+**/backend/static/test_sdxl_*.mp4
+**/backend/static/test_motion_*.mp4
+**/backend/static/test_ducked_*.wav
+**/backend/static/test_upgraded_*.wav
+**/backend/static/test_horror_*.png
