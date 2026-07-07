@@ -314,7 +314,11 @@ export default function App() {
         )}
 
         {activeTab === 'tasks' && (
-          <TasksList tasks={tasks} onCancelTask={handleCancelTask} />
+          <TasksList 
+            tasks={tasks} 
+            onCancelTask={handleCancelTask} 
+            onPlayVideo={setPlayingVideo} 
+          />
         )}
 
         {activeTab === 'media' && (

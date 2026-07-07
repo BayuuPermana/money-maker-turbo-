@@ -1085,7 +1085,17 @@ def get_task_status_db(task_id: str) -> Dict[str, Any]:
         "progress": task["progress"],
         "step": task["step"],
         "logs": logs_data,
-        "video_url": f"/static/video_{task_id}.mp4" if task["status"] == "Completed" else None
+        "video_url": f"/static/video_{task_id}.mp4" if task["status"] == "Completed" else None,
+        "aspect_ratio": task.get("aspect_ratio"),
+        "voice_name": task.get("voice_name"),
+        "language": task.get("language"),
+        "paragraph_number": task.get("paragraph_number"),
+        "duration_seconds": task.get("duration_seconds"),
+        "created_at": task.get("created_at"),
+        "local_steps": task.get("local_steps"),
+        "local_cfg": task.get("local_cfg"),
+        "local_seed": task.get("local_seed"),
+        "local_negative_prompt": task.get("local_negative_prompt")
     }
 
 @app.post("/api/v1/videos")
@@ -1167,7 +1177,17 @@ def get_all_tasks():
             "progress": row["progress"],
             "step": row["step"],
             "logs": logs_data,
-            "video_url": f"/static/video_{row['id']}.mp4" if row["status"] == "Completed" else None
+            "video_url": f"/static/video_{row['id']}.mp4" if row["status"] == "Completed" else None,
+            "aspect_ratio": row.get("aspect_ratio"),
+            "voice_name": row.get("voice_name"),
+            "language": row.get("language"),
+            "paragraph_number": row.get("paragraph_number"),
+            "duration_seconds": row.get("duration_seconds"),
+            "created_at": row.get("created_at"),
+            "local_steps": row.get("local_steps"),
+            "local_cfg": row.get("local_cfg"),
+            "local_seed": row.get("local_seed"),
+            "local_negative_prompt": row.get("local_negative_prompt")
         })
     return tasks
 
