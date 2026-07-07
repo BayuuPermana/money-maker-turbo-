@@ -657,7 +657,7 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
                 raw_music_path = os.path.join(STATIC_DIR, f"music_{task_id}.wav")
                 # Infer music mood from subject
                 music_prompt = f"ambient cinematic background music for a video about {actual_subject}, no vocals"
-                music_duration = int(audio_duration) + 4
+                music_duration = min(int(audio_duration) + 4, 15)
 
                 music_cmd = [local_benchmark_python_music, music_script, music_prompt, raw_music_path, str(music_duration)]
                 music_result = subprocess.run(music_cmd, capture_output=True, text=True, check=False, timeout=300)
