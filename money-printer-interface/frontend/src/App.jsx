@@ -15,7 +15,7 @@ import TasksList from './components/TasksList';
 import MediaLibrary from './components/MediaLibrary';
 import Settings from './components/Settings';
 import CustomPlayer from './components/CustomPlayer';
-import { getVideos, createVideoTask, getTaskStatus, getTasks } from './api';
+import { getVideos, createVideoTask, getTaskStatus, getTasks, cancelTask } from './api';
 import './App.css';
 
 export default function App() {
@@ -145,6 +145,30 @@ export default function App() {
     }));
     localStorage.setItem("active_task_id", taskStatus.task_id);
     setActiveTab("tasks"); // Switch to tasks list
+  };
+
+  const handleCancelTask = async (taskId) => {
+    try {
+      await cancelTask(taskId);
+      // Immediately update local task status to prevent waiting for poll update
+      setTasks(prev => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          status: 'Failed',
+          step: 'Cancelled',
+          progress: 0,
+          logs: [...(prev[taskId].logs || []), `[${new Date().toLocaleTimeString()}] [SYSTEM] Task cancellation requested by user.`]
+        }
+      }));
+      // Remove from active task tracker
+      const storedId = localStorage.getItem("active_task_id");
+      if (storedId === taskId) {
+        localStorage.removeItem("active_task_id");
+      }
+    } catch (err) {
+      console.error("Failed to cancel task:", err);
+    }
   };
 
   // Count active tasks
@@ -290,7 +314,7 @@ export default function App() {
         )}
 
         {activeTab === 'tasks' && (
-          <TasksList tasks={tasks} />
+          <TasksList tasks={tasks} onCancelTask={handleCancelTask} />
         )}
 
         {activeTab === 'media' && (

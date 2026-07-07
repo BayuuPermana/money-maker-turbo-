@@ -485,6 +485,9 @@ def get_pexels_video(query: str, api_key: str, aspect_ratio: str, target_duratio
 # Mount the static directory to serve video files
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+class TaskCancelledException(Exception):
+    pass
+
 def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice_name: str, language: str, paragraph_number: int, duration_seconds: float, tts_provider: str):
     def log_line(category: str, message: str):
         log_time = datetime.now()
@@ -493,6 +496,21 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
     logs = [log_line("LLM Scripting", "Initializing video generation task...")]
     
     def update_db(progress: int, step: str, new_log_cat: str = None, new_log_msg: str = None, status: str = "processing"):
+        # Check database status first for user cancellation
+        try:
+            conn = get_db_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT status FROM tasks WHERE id = %s", (task_id,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if row and row[0] == "Failed":
+                raise TaskCancelledException("Task was cancelled by the user.")
+        except TaskCancelledException:
+            raise
+        except Exception as e:
+            print(f"Error checking cancellation status: {e}")
+
         if new_log_cat and new_log_msg:
             logs.append(log_line(new_log_cat, new_log_msg))
         try:
@@ -991,6 +1009,8 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
         except Exception as db_e:
             print(f"Failed to insert video record: {db_e}")
             raise db_e
+    except TaskCancelledException as cancel_err:
+        print(f"Task {task_id} execution terminated: {cancel_err}")
     except Exception as err:
         import traceback
         traceback.print_exc()
@@ -1009,12 +1029,31 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
         except Exception as db_e:
             print(f"Failed to update failure state in DB: {db_e}")
     finally:
+        # Perform comprehensive temp files cleanup
         try:
-            cur.close()
+            if 'temp_video_clip_path' in locals() and temp_video_clip_path and os.path.exists(temp_video_clip_path):
+                os.remove(temp_video_clip_path)
         except Exception:
             pass
         try:
-            conn.close()
+            if 'ai_scene_clips' in locals() and ai_scene_clips:
+                for scp in ai_scene_clips:
+                    if os.path.exists(scp):
+                        os.remove(scp)
+                for i in range(len(ai_scene_clips)):
+                    img_p = os.path.join(STATIC_DIR, f"scene_{task_id}_{i}.png")
+                    if os.path.exists(img_p):
+                        os.remove(img_p)
+        except Exception:
+            pass
+        try:
+            if 'mixed_audio_path' in locals() and mixed_audio_path and os.path.exists(mixed_audio_path):
+                os.remove(mixed_audio_path)
+        except Exception:
+            pass
+        try:
+            if 'wav_path' in locals() and wav_path and os.path.exists(wav_path):
+                os.remove(wav_path)
         except Exception:
             pass
 
@@ -1135,6 +1174,37 @@ def get_all_tasks():
 @app.get("/api/v1/tasks/{task_id}")
 def get_task(task_id: str):
     return get_task_status_db(task_id)
+
+@app.post("/api/v1/tasks/{task_id}/cancel")
+def cancel_task(task_id: str):
+    try:
+        conn = get_db_conn()
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        # Get current logs
+        cur.execute("SELECT logs FROM tasks WHERE id = %s", (task_id,))
+        row = cur.fetchone()
+        logs = []
+        if row and row[0]:
+            logs = row[0]
+            if isinstance(logs, str):
+                logs = json.loads(logs)
+        
+        # Append cancel log
+        log_time = datetime.now()
+        cancel_log = f"[{log_time.strftime('%Y-%m-%d %H:%M:%S')}] [SYSTEM] Task cancelled by user."
+        logs.append(cancel_log)
+        
+        cur.execute(
+            "UPDATE tasks SET status = 'Failed', step = 'Cancelled', progress = 0, logs = %s WHERE id = %s",
+            (json.dumps(logs), task_id)
+        )
+        cur.close()
+        conn.close()
+        return {"status": "success", "message": f"Task {task_id} marked as cancelled."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel task: {e}")
 
 @app.get("/api/v1/videos")
 def get_videos():

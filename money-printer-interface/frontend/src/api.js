@@ -53,3 +53,11 @@ export const getTasks = async () => {
   if (!response.ok) throw new Error("Failed to fetch tasks");
   return response.json();
 };
+
+export const cancelTask = async (taskId) => {
+  const response = await fetch(`${API_BASE}/api/v1/tasks/${taskId}/cancel`, {
+    method: "POST"
+  });
+  if (!response.ok) throw new Error("Failed to cancel task");
+  return response.json();
+};
