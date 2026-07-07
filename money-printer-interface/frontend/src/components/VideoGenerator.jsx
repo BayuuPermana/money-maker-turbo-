@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Play, Video, AlignLeft, Volume2, Globe, Layers, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Play, Video, AlignLeft, Volume2, Globe, Layers, AlertCircle, CheckCircle2, Sliders } from 'lucide-react';
 import { generateScript } from '../api';
 
 const VOICES = [
@@ -40,6 +40,13 @@ export default function VideoGenerator({ onSubmitTask }) {
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+
+  // Local AI Generation Overrides
+  const [showLocalSettings, setShowLocalSettings] = useState(false);
+  const [localSteps, setLocalSteps] = useState("");
+  const [localCfg, setLocalCfg] = useState("");
+  const [localSeed, setLocalSeed] = useState("");
+  const [localNegativePrompt, setLocalNegativePrompt] = useState("");
 
   // Generate Script using AI from backend
   const handleGenerateScript = async () => {
@@ -129,7 +136,11 @@ export default function VideoGenerator({ onSubmitTask }) {
         video_aspect_ratio: aspectRatio,
         voice_name: voiceName,
         language: language,
-        paragraph_number: paragraphs
+        paragraph_number: paragraphs,
+        local_steps: localSteps ? parseInt(localSteps) : null,
+        local_cfg: localCfg ? parseFloat(localCfg) : null,
+        local_seed: localSeed ? parseInt(localSeed) : null,
+        local_negative_prompt: localNegativePrompt || null
       });
       
       setMessage({ 
@@ -264,6 +275,82 @@ export default function VideoGenerator({ onSubmitTask }) {
                   <span className="aspect-desc">YouTube standard, Widescreen</span>
                 </div>
               </div>
+            </div>
+
+            {/* Collapsible Local Image settings overrides */}
+            <div style={{ marginTop: '16px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => setShowLocalSettings(!showLocalSettings)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.2)',
+                  border: 'none',
+                  padding: '12px 16px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: 600
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sliders size={16} /> Advanced Local AI (ComfyUI) Settings
+                </span>
+                <span>{showLocalSettings ? '▲' : '▼'}</span>
+              </button>
+
+              {showLocalSettings && (
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'rgba(0,0,0,0.1)' }}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Steps Override</label>
+                      <input
+                        type="number"
+                        placeholder="Leave blank for default"
+                        value={localSteps}
+                        onChange={e => setLocalSteps(e.target.value)}
+                        style={{ color: 'white' }}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>CFG Override</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        placeholder="Leave blank for default"
+                        value={localCfg}
+                        onChange={e => setLocalCfg(e.target.value)}
+                        style={{ color: 'white' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Seed Override</label>
+                    <input
+                      type="number"
+                      placeholder="Leave blank for random"
+                      value={localSeed}
+                      onChange={e => setLocalSeed(e.target.value)}
+                      style={{ color: 'white' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Negative Prompt Override</label>
+                    <textarea
+                      placeholder="Leave blank for default negative prompt"
+                      value={localNegativePrompt}
+                      onChange={e => setLocalNegativePrompt(e.target.value)}
+                      style={{ minHeight: '50px', padding: '8px', fontSize: '0.8rem', color: 'black', borderRadius: '6px' }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {!scriptText.trim() ? (

@@ -15,7 +15,11 @@ export default function Settings() {
     subtitles_enabled: true,
     subtitle_color: "#FFFFFF",
     subtitle_fontsize: 24,
-    output_dir: "./output"
+    output_dir: "./output",
+    local_steps: 20,
+    local_cfg: 7.5,
+    local_seed: 1337,
+    local_negative_prompt: "low quality, worst quality, deformed, bad anatomy, bad hands, blurry, watermark, text, signature"
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -315,6 +319,67 @@ export default function Settings() {
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 Target directory on host system where rendered files will build.
               </span>
+            </div>
+
+            <h2 className="section-title" style={{ marginTop: '16px' }}>
+              <Sliders size={18} /> Local AI Image Generator (ComfyUI Schema)
+            </h2>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Sampling Steps</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="50" 
+                    value={config.local_steps || 20}
+                    onChange={e => handleChange('local_steps', parseInt(e.target.value))}
+                    style={{ flex: 1, accentColor: 'var(--color-primary)' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '32px', textAlign: 'right' }}>
+                    {config.local_steps || 20}
+                  </span>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>CFG Scale</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="20" 
+                    step="0.5"
+                    value={config.local_cfg || 7.5}
+                    onChange={e => handleChange('local_cfg', parseFloat(e.target.value))}
+                    style={{ flex: 1, accentColor: 'var(--color-primary)' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '32px', textAlign: 'right' }}>
+                    {config.local_cfg || 7.5}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Default Seed</label>
+              <input 
+                type="number" 
+                value={config.local_seed || 1337}
+                onChange={e => handleChange('local_seed', parseInt(e.target.value) || 1337)}
+                placeholder="e.g. 1337"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Default Negative Prompt</label>
+              <textarea 
+                value={config.local_negative_prompt || ""}
+                onChange={e => handleChange('local_negative_prompt', e.target.value)}
+                placeholder="low quality, worst quality..."
+                style={{ minHeight: '60px', padding: '8px', fontSize: '0.85rem', color: 'black', borderRadius: '8px' }}
+              />
             </div>
           </div>
         </div>

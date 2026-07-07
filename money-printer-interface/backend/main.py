@@ -61,6 +61,10 @@ class SettingsModel(BaseModel):
     subtitle_color: str = "#FFFFFF"
     subtitle_fontsize: int = 24
     output_dir: str = "./output"
+    local_steps: int = 20
+    local_cfg: float = 7.5
+    local_seed: int = 1337
+    local_negative_prompt: str = "low quality, worst quality, deformed, bad anatomy, bad hands, blurry, watermark, text, signature"
 
 class VideoRequest(BaseModel):
     video_subject: str
@@ -68,6 +72,10 @@ class VideoRequest(BaseModel):
     voice_name: str = "en-US-GuyNeural"
     language: str = "en"
     paragraph_number: int = 2
+    local_steps: Optional[int] = None
+    local_cfg: Optional[float] = None
+    local_seed: Optional[int] = None
+    local_negative_prompt: Optional[str] = None
 
 # DB connection helper
 def get_db_conn(dbname="money_printer"):
@@ -130,6 +138,11 @@ def init_db():
                 logs JSONB
             )
         """)
+        
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS local_steps INT")
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS local_cfg FLOAT")
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS local_seed INT")
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS local_negative_prompt TEXT")
         
         cur.execute("""
             CREATE TABLE IF NOT EXISTS videos (
@@ -496,6 +509,32 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
             print(f"Failed to update task state in DB: {db_e}")
     
     try:
+        # Fetch task-specific local generation settings
+        t_local_steps = None
+        t_local_cfg = None
+        t_local_seed = None
+        t_local_neg = None
+        try:
+            conn = get_db_conn()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT local_steps, local_cfg, local_seed, local_negative_prompt FROM tasks WHERE id = %s", (task_id,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if row:
+                t_local_steps = row.get("local_steps")
+                t_local_cfg = row.get("local_cfg")
+                t_local_seed = row.get("local_seed")
+                t_local_neg = row.get("local_negative_prompt")
+        except Exception as db_err:
+            print(f"Error querying task settings from database: {db_err}")
+
+        global_config = load_config()
+        local_steps = t_local_steps if t_local_steps is not None else global_config.get("local_steps", 20)
+        local_cfg = t_local_cfg if t_local_cfg is not None else global_config.get("local_cfg", 7.5)
+        local_seed = t_local_seed if t_local_seed is not None else global_config.get("local_seed", 1337)
+        local_negative_prompt = t_local_neg if t_local_neg is not None else global_config.get("local_negative_prompt", "low quality, worst quality, deformed, bad anatomy, bad hands, blurry, watermark, text, signature")
+
         is_local = (tts_provider == "local-chatterbox")
         sleep_step = (duration_seconds / 6.0) if not is_local else 0.5
         
@@ -545,13 +584,8 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
         if is_local:
             update_db(35, "Voice Synthesis", "Voice Synthesis", "Running Chatterbox Turbo TTS engine locally...")
             
-            # Resolve chatterbox-benchmark virtual environment dynamically if possible
-            parent_dir = os.path.dirname(os.path.dirname(BASE_DIR))
-            local_benchmark_python = os.path.join(parent_dir, "chatterbox-benchmark", "venv", "Scripts", "python.exe")
-            if os.path.exists(local_benchmark_python):
-                interpreter = local_benchmark_python
-            else:
-                interpreter = r"C:\Users\syahrieza\.gemini\antigravity\scratch\chatterbox-benchmark\venv\Scripts\python.exe"
+            # Use current backend python interpreter
+            interpreter = sys.executable
             script_path = os.path.join(BASE_DIR, "generate_tts_local.py")
             
             cmd = [interpreter, script_path, script_text, wav_path, language]
@@ -598,10 +632,8 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
         if os.path.exists(wav_path) and audio_duration:
             try:
                 update_db(48, "AI Music", "AI Music", "Generating AI background music with MusicGen locally...")
-                parent_dir_for_music = os.path.dirname(os.path.dirname(BASE_DIR))
-                local_benchmark_python_music = os.path.join(parent_dir_for_music, "chatterbox-benchmark", "venv", "Scripts", "python.exe")
-                if not os.path.exists(local_benchmark_python_music):
-                    local_benchmark_python_music = r"C:\Users\syahrieza\.gemini\antigravity\scratch\chatterbox-benchmark\venv\Scripts\python.exe"
+                # Use current backend python interpreter
+                local_benchmark_python_music = sys.executable
 
                 music_script = os.path.join(BASE_DIR, "generate_music_local.py")
                 raw_music_path = os.path.join(STATIC_DIR, f"music_{task_id}.wav")
@@ -712,10 +744,8 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
         if is_local:
             try:
                 update_db(52, "AI Visuals", "AI Visuals", "Generating AI scene images with SDXL Turbo locally...")
-                parent_dir_img = os.path.dirname(os.path.dirname(BASE_DIR))
-                local_benchmark_python_img = os.path.join(parent_dir_img, "chatterbox-benchmark", "venv", "Scripts", "python.exe")
-                if not os.path.exists(local_benchmark_python_img):
-                    local_benchmark_python_img = r"C:\Users\syahrieza\.gemini\antigravity\scratch\chatterbox-benchmark\venv\Scripts\python.exe"
+                # Use current backend python interpreter
+                local_benchmark_python_img = sys.executable
 
                 img_gen_script = os.path.join(BASE_DIR, "generate_images_local.py")
                 cam_motion_script = os.path.join(BASE_DIR, "apply_camera_motion.py")
@@ -754,8 +784,19 @@ def process_task_background(task_id: str, subject: str, aspect_ratio: str, voice
                     # Build a short visual prompt from the scene paragraph
                     scene_prompt = scene_text[:200] + f", {actual_subject} setting"
 
+                    res_arg = "512x896" if aspect_ratio == "9:16" else ("896x512" if aspect_ratio == "16:9" else "512x512")
                     # 1. Generate image
-                    img_cmd = [local_benchmark_python_img, img_gen_script, scene_prompt, img_path]
+                    img_cmd = [
+                        local_benchmark_python_img, 
+                        img_gen_script, 
+                        scene_prompt, 
+                        img_path,
+                        "--resolution", res_arg,
+                        "--steps", str(local_steps),
+                        "--cfg", str(local_cfg),
+                        "--seed", str(local_seed),
+                        "--negative-prompt", local_negative_prompt
+                    ]
                     img_result = subprocess.run(img_cmd, capture_output=True, text=True, check=False, timeout=300)
 
                     if img_result.returncode == 0 and os.path.exists(img_path):
@@ -1034,13 +1075,15 @@ def create_video_task(req: VideoRequest):
             """
             INSERT INTO tasks (
                 id, subject, script, aspect_ratio, voice_name, language, 
-                paragraph_number, duration_seconds, created_at, status, progress, step, logs
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                paragraph_number, duration_seconds, created_at, status, progress, step, logs,
+                local_steps, local_cfg, local_seed, local_negative_prompt
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 task_id, req.video_subject, "", req.video_aspect_ratio, req.voice_name, 
                 req.language, req.paragraph_number, duration_seconds, created_at, 
-                status, progress, step, json.dumps(logs)
+                status, progress, step, json.dumps(logs),
+                req.local_steps, req.local_cfg, req.local_seed, req.local_negative_prompt
             )
         )
         cur.close()
