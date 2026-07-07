@@ -1343,3 +1343,97 @@ textarea:focus {
 .voice-play-icon:hover {
   transform: scale(1.15);
 }
+
+/* Responsive Layout Adjustments for Mobile & Tablets */
+@media (max-width: 992px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 20px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 0;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    gap: 8px;
+    flex: unset;
+  }
+
+  .nav-item {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+
+  .nav-item span {
+    display: none; /* Hide labels on mobile to save space, keeping icons */
+  }
+  
+  @media (min-width: 640px) {
+    .nav-item span {
+      display: inline; /* Show labels on tablets */
+    }
+  }
+
+  .sidebar-footer {
+    display: none; /* Hide profile summary on mobile to conserve screen space */
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 24px 16px;
+    gap: 24px;
+  }
+
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 576px) {
+  .sidebar {
+    padding: 10px 12px;
+  }
+  
+  .brand-name {
+    display: none; /* Only show the brand icon on very small mobile screens */
+  }
+  
+  .sidebar-nav {
+    width: 100%;
+    justify-content: space-around;
+  }
+}
