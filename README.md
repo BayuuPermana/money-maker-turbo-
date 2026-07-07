@@ -19,7 +19,7 @@ Before setting up the repository, ensure your development environment has the fo
 
 ## 💸 Project 1: MoneyPrinterTurbo Interface
 
-An automated video generation system featuring a FastAPI server backend and a Vite React user interface.
+An automated video generation system featuring a FastAPI server backend and a Vite React user interface. For detailed documentation on the local ComfyUI workflow schema generator, local `.safetensors` models setup, and CPU/iGPU performance optimizations, see the **[MoneyPrinterTurbo README](file:///D:/Kerja/money-maker-turbo-/money-printer-interface/README.md)**.
 
 ```
 money-printer-interface/
