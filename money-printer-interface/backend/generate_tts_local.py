@@ -193,7 +193,15 @@ def main():
             os.makedirs(out_dir, exist_ok=True)
             
         print(f"Saving audio to {output_path}...")
-        ta.save(output_path, wav_cpu, model.sr)
+        try:
+            import soundfile as sf
+            audio_data = wav_cpu.numpy()
+            if len(audio_data.shape) > 1 and audio_data.shape[0] == 1:
+                audio_data = audio_data[0]
+            sf.write(output_path, audio_data, model.sr)
+        except Exception as sf_e:
+            print(f"soundfile write failed: {sf_e}. Falling back to torchaudio...")
+            ta.save(output_path, wav_cpu, model.sr)
         print("TTS generation complete!")
     except Exception as e:
         print(f"Error during generation: {e}")
